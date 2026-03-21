@@ -85,6 +85,7 @@ def lookup_book(query: str, limit: int = 20) -> list[dict]:
         A list of dictionaries containing metadata for each successfully fetched book.
         See get_book_data for the structure of each dictionary.
     """
+    logger.info(f"Querying Audible: {query}")
     results = requests.get(
         f"https://www.audible.com/search?keywords={urllib.parse.quote_plus(query)}"
     )
@@ -95,5 +96,5 @@ def lookup_book(query: str, limit: int = 20) -> list[dict]:
         if i > limit:
             break
         asins.append(book["data-asin"])
-    logger.info(f"ASINs found: {asins}")
+    logger.debug(f"ASINs found: {asins}")
     return maybe_get_books_data(asins)
