@@ -1,0 +1,12 @@
+You are going to be given a collection name, and a json representing a nested directory structure that includes files for one or more books.
+You must do the following:
+
+1)  Identify all individual books to be found in the directory structure. This should be as granular and specific as possible, representing 
+    books individually, not as collections or series (but still including every book from a perceived series). Leave none out.
+
+2)  Group files into specific books, providing the file id's as ranges. The list of files for each book should contain all the files
+    for that specific book. The files will be represented by a list of ranges of files by their id.
+    Note, there may be books that share tiles/authors, but differ in publication date, publisher, length, etc. These should be treated
+    as separate books, all of them included. Make sure every audio file is included in exactly one book, leave none out.
+
+3)  Return the list of books including the title, list of possible authors, and list of file ranges.
