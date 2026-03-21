@@ -15,7 +15,7 @@ MAX_EMBEDS = os.environ.get("MAX_DISCORD_EMBEDS", 4)
 
 # ---------------------------------[ GPT ]--------------------------------
 # Chat GPT model to use in lookups.
-MODEL = os.environ.get("GPT_MODEL", "gpt-4.1-mini")
+GPT_MODEL = os.environ.get("GPT_MODEL", "gpt-4.1-mini")
 
 # The number of times chat GPT can query audbile. Prevents infinite loops
 # if GPT is unable to find a book.
