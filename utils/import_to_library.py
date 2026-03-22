@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 def import_books(torrent_info: dict, overwrite: bool) -> None:
     books = parse_books.get_book_data(torrent_info)
 
-    discord_lib.send_book_info(books, torrent_info["name"], constants.MAX_EMBEDS)
+    discord_lib.send_book_info(books, torrent_info["name"])
 
     logging.debug(
         f"Books found: {'\n'.join([json.dumps(asdict(book), indent=2) for book in books])}"

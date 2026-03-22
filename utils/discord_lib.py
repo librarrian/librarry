@@ -153,10 +153,10 @@ def multiple_messages(books: list[BookMetadata], torrent_name: str) -> list[dict
     return embeds
 
 
-def send_book_info(books: list[BookMetadata], torrent_name: str, max_embeds: int):
+def send_book_info(books: list[BookMetadata], torrent_name: str):
     if not constants.DISCORD_WEBHOOK:
         return
-    if len(books) > max_embeds:
+    if len(books) > constants.MAX_EMBEDS:
         embeds = single_message(books, torrent_name)
     else:
         embeds = multiple_messages(books, torrent_name)
