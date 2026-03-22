@@ -55,6 +55,21 @@ def get_torrent_info(
     return
 
 
+@app.route("/torrent_added", methods=["POST"])
+def torrent_added():
+    torrent_info = {}
+    response = get_torrent_info(request, torrent_info)
+    if response:
+        return response
+    name = torrent_info["name"]
+    logger.info(f"Torrent found: {name}")
+    logger.debug(f"Torrent info: {json.dumps(torrent_info, indent=2)}")
+    return (
+        jsonify({"status": "success", "message": f"Audiobook data found: {name}"}),
+        200,
+    )
+
+
 @app.route("/torrent_complete", methods=["POST"])
 def torrent_complete():
     torrent_info = {}
