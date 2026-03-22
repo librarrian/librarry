@@ -4,13 +4,23 @@ import sys
 
 logger = logging.getLogger(__name__)
 
+# -------------------------------[ Audiobooks ]-------------------------------
+AUDIOBOOKS_DIR = os.environ.get("AUDIOBOOKS_DIR", "/audiobooks")
+
+
 # -------------------------------[ Discord ]-------------------------------
 # The Discord webhook URL to send messages to.
-WEBHOOK = os.environ.get("DISCORD_WEBHOOK")
+DISCORD_WEBHOOK = os.environ.get("DISCORD_WEBHOOK")
 
 # The number of books to send as separate embeds. If the number
 # is greater than this, a single message without thumbnails will be sent instead.
-MAX_EMBEDS = os.environ.get("MAX_DISCORD_EMBEDS", 4)
+try:
+    MAX_EMBEDS = int(os.environ.get("MAX_DISCORD_EMBEDS", 4))
+except ValueError:
+    logger.error(
+        f"Invalid int MAX_EMBEDS value: {os.environ.get('MAX_EMBEDS')}. Using default of 4."
+    )
+    MAX_EMBEDS = 4
 
 
 # ---------------------------------[ GPT ]--------------------------------
@@ -23,7 +33,7 @@ try:
     NUM_LOOKUPS = int(os.environ.get("NUM_GPT_LOOKUPS", 10))
 except ValueError:
     logger.error(
-        f"Invalid NUM_GPT_LOOKUPS value: {os.environ.get('NUM_GPT_LOOKUPS')}. Using default of 10."
+        f"Invalid int NUM_GPT_LOOKUPS value: {os.environ.get('NUM_GPT_LOOKUPS')}. Using default of 10."
     )
     NUM_LOOKUPS = 10
 
@@ -47,7 +57,7 @@ LOG_DIR = os.environ.get("LOG_DIR", "/tmp/logs")
 
 # ----------------------------[ ENV VALIDATION ]----------------------------
 def validate_env():
-    if not WEBHOOK:
+    if not DISCORD_WEBHOOK:
         logger.warning(
             "DISCORD_WEBHOOK environment variable not set. Discord messages will not be sent."
         )
@@ -58,3 +68,10 @@ def validate_env():
             " GPT lookups will not work. Exiting program."
         )
         sys.exit(1)
+    
+    try:
+        int(FLASK_PORT)
+    except ValueError:
+        logger.critical(f"FLASK_PORT value '{FLASK_PORT}' not convertible to int. Exiting program")
+        sys.exit(1)
+
