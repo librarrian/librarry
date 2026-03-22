@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, wrappers
 import os
 import logging
 import json
@@ -18,13 +18,13 @@ app.logger.propagate = True
 logger = logging.getLogger(__name__)
 
 
-@app.route("/torrent_complete", methods=["POST"])
-def interactions():
-    tor_interface = qbittorrent_interface.QBittorrentInterface(
-        address=constants.QBITTORRENT_ADDRESS, logger=logger
-    )
-
+def get_torrent_info(
+    request: wrappers.Request, torrent_info: dict
+) -> tuple[wrappers.Response, int] | None:
     hash = request.args.get("hash")
+    tor_interface = qbittorrent_interface.QBittorrentInterface(
+        address=constants.QBITTORRENT_ADDRESS
+    )
     if not hash:
         message = "Hash not found in torrent_complete request. Add as url argument, e.g. /torrent_complete?hash=abc123"
         logger.error(message)
@@ -38,7 +38,7 @@ def interactions():
             400,
         )
     try:
-        torrent_info = tor_interface.get_torrent_info(hash)
+        torrent_info.update(tor_interface.get_torrent_info(hash))
     except qbittorrent_interface.QbittorrentError as e:
         logger.error(e)
         return (
@@ -50,7 +50,19 @@ def interactions():
             ),
             500,
         )
-    name = torrent_info.get("name", hash)
+    if "name" not in torrent_info:
+        torrent_info["name"] = ""
+    return
+
+
+@app.route("/torrent_complete", methods=["POST"])
+def torrent_complete():
+    torrent_info = {}
+    response = get_torrent_info(request, torrent_info)
+    if response:
+        return response
+
+    name = torrent_info["name"]
     logger.info(f"Torrent found: {name}")
     logger.debug(f"Torrent info: {json.dumps(torrent_info, indent=2)}")
     if not torrent_info.get("category") == "audiobook":
@@ -59,7 +71,19 @@ def interactions():
             200,
         )
 
-    import_books(torrent_info)
+    overwrite = {
+        "true": True,
+        "1": True,
+        "false": False,
+        "0": False,
+    }.get(request.args.get("overwrite", "false").lower(), False)
+    try:
+        import_books(torrent_info, overwrite=overwrite)
+    except Exception as e:
+        return (
+            jsonify({"status": "error", "message": f"{e}"}),
+            500,
+        )
 
     return (
         jsonify({"status": "success", "message": f"Audiobook complete: {name}"}),
