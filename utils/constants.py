@@ -23,6 +23,25 @@ except ValueError:
     MAX_EMBEDS = 4
 
 
+# ------------------------------[ QBittorrent ]-------------------------------
+QBITTORRENT_ADDRESS = os.environ.get("QBITTORRENT_ADDRESS", "http://localhost:8080")
+
+
+# ---------------------------------[ FLASK ]--------------------------------
+FLASK_PORT = os.environ.get("FLASK_PORT", 8080)
+
+
+# ---------------------------------[ REDIS ]--------------------------------
+REDIS_HOST = os.environ.get("REDIS_HOST", "http://localhost")
+REDIS_PORT = os.environ.get("REDIS_PORT", 6379)
+REDIS_DB = os.environ.get("REDIS_DB", 0)
+
+
+# ---------------------------------[ LOGS ]---------------------------------
+LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
+LOG_DIR = os.environ.get("LOG_DIR", "/tmp/logs")
+
+
 # ---------------------------------[ GPT ]--------------------------------
 # Chat GPT model to use in lookups.
 GPT_MODEL = os.environ.get("GPT_MODEL", "gpt-4.1-mini")
@@ -42,20 +61,17 @@ except ValueError:
 # for more details.
 
 
-# ------------------------------[ QBittorrent ]-------------------------------
-QBITTORRENT_ADDRESS = os.environ.get("QBITTORRENT_ADDRESS", "http://localhost:8080")
-
-
-# ---------------------------------[ FLASK ]--------------------------------
-FLASK_PORT = os.environ.get("FLASK_PORT", 8080)
-
-
-# ---------------------------------[ LOGS ]---------------------------------
-LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
-LOG_DIR = os.environ.get("LOG_DIR", "/tmp/logs")
-
-
 # ----------------------------[ ENV VALIDATION ]----------------------------
+def validate_int(name, value):
+    try:
+        int(value)
+    except ValueError:
+        logger.critical(
+            f"{name} value '{value}' not convertible to int. Exiting program"
+        )
+        sys.exit(1)
+
+
 def validate_env():
     if not DISCORD_WEBHOOK:
         logger.warning(
@@ -68,10 +84,7 @@ def validate_env():
             " GPT lookups will not work. Exiting program."
         )
         sys.exit(1)
-    
-    try:
-        int(FLASK_PORT)
-    except ValueError:
-        logger.critical(f"FLASK_PORT value '{FLASK_PORT}' not convertible to int. Exiting program")
-        sys.exit(1)
 
+    validate_int("FLASK_PORT", FLASK_PORT)
+    validate_int("REDIS_PORT", REDIS_PORT)
+    validate_int("REDIS_DB", REDIS_DB)
