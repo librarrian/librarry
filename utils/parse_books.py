@@ -4,18 +4,17 @@ import backoff
 import logging
 import json
 import re
-from .gpt_lib import find_books
+from . import constants, gpt_lib
 
-# import gpt_lib
-
-qbittorrent_address = os.environ.get("QBITTORRENT_ADDRESS", "http://localhost:8080")
 logger = logging.getLogger(__name__)
 
 
 @backoff.on_predicate(backoff.expo, lambda x: x == [], max_time=120)
 @backoff.on_exception(backoff.expo, RuntimeError, max_time=120)
 def get_files(hash: str) -> list[str]:
-    response = requests.get(f"{qbittorrent_address}/api/v2/torrents/files?hash={hash}")
+    response = requests.get(
+        f"{constants.QBITTORRENT_ADDRESS}/api/v2/torrents/files?hash={hash}"
+    )
     if response.status_code != 200:
         raise RuntimeError(f"Failed to get torrent info for hash {hash}")
     files = []
@@ -33,7 +32,7 @@ def get_book_data(
     files = get_files(torrent_info["hash"])
     logger.debug(f"Files found for {torrent_info['name']}: {files}")
 
-    books = find_books(torrent_info["name"], files)
+    books = gpt_lib.find_books(torrent_info["name"], files)
     found = [book for book in books if book.get("asin")]
 
     # json_file = re.sub(r"[^a-zA-Z0-9\s\.\-_]", "", torrent_info["name"])[:200]

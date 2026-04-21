@@ -19,7 +19,13 @@ GPT_MODEL = os.environ.get("GPT_MODEL", "gpt-4.1-mini")
 
 # The number of times chat GPT can query audbile. Prevents infinite loops
 # if GPT is unable to find a book.
-NUM_LOOKUPS = os.environ.get("NUM_GPT_LOOKUPS", 10)
+try:
+    NUM_LOOKUPS = int(os.environ.get("NUM_GPT_LOOKUPS", 10))
+except ValueError:
+    logger.error(
+        f"Invalid NUM_GPT_LOOKUPS value: {os.environ.get('NUM_GPT_LOOKUPS')}. Using default of 10."
+    )
+    NUM_LOOKUPS = 10
 
 # Also requires an OPENAI_API_KEY environment variable to be set.
 # See https://developers.openai.com/api/docs/quickstart#create-and-export-an-api-key
