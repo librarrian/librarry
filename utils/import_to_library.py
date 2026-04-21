@@ -13,10 +13,15 @@ from . import parse_books, constants, discord_lib
 logger = logging.getLogger(__name__)
 
 
+def save_book_data(torrent_info: dict) -> None:
+    books = parse_books.get_book_data(torrent_info)
+    discord_lib.send_book_info(books, torrent_info["name"], torrent_complete=False)
+
+
 def import_books(torrent_info: dict, overwrite: bool) -> None:
     books = parse_books.get_book_data(torrent_info)
 
-    discord_lib.send_book_info(books, torrent_info["name"])
+    discord_lib.send_book_info(books, torrent_info["name"], torrent_complete=True)
 
     logging.debug(
         f"Books found: {'\n'.join([json.dumps(asdict(book), indent=2) for book in books])}"
