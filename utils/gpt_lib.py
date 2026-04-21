@@ -10,15 +10,7 @@ import os
 from typing import List, Literal
 import backoff
 import logging
-from . import schema
-from . import directory_tree
-from . import audible_scrape
-
-# Chat GPT model to use in lookups.
-MODEL = os.environ.get("GPT_MODEL", "gpt-4.1-mini")
-
-# The number of times chat GPT can query audbile. Prevents infinite loops if GPT is unable to find a book.
-NUM_LOOKUPS = os.environ.get("NUM_GPT_LOOKUPS", 10)
+from . import schema, directory_tree, constants, audible_scrape
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +65,7 @@ def group_book_files(collection_name: str, root: directory_tree.Root) -> schema.
     try:
         logger.debug(f"Group files input: {inputs}")
         response = client.responses.parse(
-            model=MODEL, input=inputs, text_format=schema.Books
+            model=constants.GPT_MODEL, input=inputs, text_format=schema.Books
         )
         logger.debug(f"Group files response: {response}")
     except OpenAIError as e:
@@ -168,7 +160,7 @@ def find_asins(input_books: dict):
             )
         try:
             response = client.responses.parse(
-                model=MODEL,
+                model=constants.GPT_MODEL,
                 input=inputs,
                 tools=tools,
                 text_format=schema.MatchedBooks,
@@ -188,7 +180,7 @@ def find_asins(input_books: dict):
                 function_calls.append(output)
         if not function_calls:
             break
-        if i > NUM_LOOKUPS:
+        if i > constants.NUM_LOOKUPS:
             break
     return all_matches
 
