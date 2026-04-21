@@ -1,0 +1,39 @@
+import requests
+
+# from absl import logging
+import logging
+from flask import app
+
+
+class QbittorrentError(Exception):
+    pass
+
+
+class QBittorrentInterface:
+    def __init__(self, address: str, logger: logging.Logger):
+        self.address = address
+        self.logger = logger
+
+    def get_torrent_info(self, hash: str) -> dict[str : str | int]:
+        response = requests.get(f"{self.address}/api/v2/torrents/info?hashes={hash}")
+        if response.status_code != 200:
+            raise QbittorrentError(
+                f"Failed to get torrent info for {hash}: {response.status_code} - {response.text}"
+            )
+        try:
+            torrent_info = response.json()
+            if not torrent_info:
+                raise QbittorrentError(
+                    f"Failed to get torrent info for {hash}: empty response"
+                )
+
+        except requests.JSONDecodeError as e:
+            raise QbittorrentError(
+                f"Failed to get torrent info for {hash}: failed to parse JSON response: {e}"
+            )
+        if len(torrent_info) != 1:
+            self.logger.error(
+                f"Expected exactly one torrent info for hash {hash}, but got {len(torrent_info)}: {torrent_info}"
+            )
+
+        return torrent_info[0]
