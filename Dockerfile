@@ -42,6 +42,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app.py .
 COPY __init__.py .
 COPY utils ./utils
+COPY templates ./templates
+COPY static ./static
 
 # Copy binaries
 COPY --from=ffmpeg /usr/local/bin/ffmpeg /usr/local/bin/
