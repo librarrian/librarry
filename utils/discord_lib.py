@@ -39,7 +39,9 @@ def embed_len(embed: dict):
     return out
 
 
-def single_message(books: list[BookMetadata], torrent_name) -> list[dict]:
+def single_message(
+    books: list[BookMetadata], torrent_name: str, torrent_complete: bool
+) -> list[dict]:
     found = []
     not_found = []
 
@@ -56,20 +58,16 @@ def single_message(books: list[BookMetadata], torrent_name) -> list[dict]:
             color = ORANGE
         else:
             color = GREEN
-        not_found_title = (
-            f"{len(not_found)} books not found for torrent '{torrent_name}'"
-        )
+        not_found_title = f"{len(not_found)} books not found"
     else:
         color = RED
-        not_found_title = (
-            f"No books found for torrent '{torrent_name}' ({len(not_found)} total)"
-        )
+        not_found_title = f"'{torrent_name}' {"completed. " if torrent_complete else "started. "}No books found ({len(not_found)} total)"
 
     embeds = []
     if found:
         embeds.append(
             {
-                "title": f"{len(found)} books found for torrent '{torrent_name}'",
+                "title": f"'{torrent_name}' {"completed. " if torrent_complete else "started. "}{len(found)} books found",
                 "color": color,
                 "description": "",
             }
@@ -95,8 +93,12 @@ def single_message(books: list[BookMetadata], torrent_name) -> list[dict]:
     return embeds
 
 
-def multiple_messages(books: list[BookMetadata], torrent_name: str) -> list[dict]:
+def multiple_messages(
+    books: list[BookMetadata], torrent_name: str, torrent_complete: bool
+) -> list[dict]:
     embeds = []
+    found=0
+    not_found=0
     for book in books:
         dir = ""
         if len(book.paths) == 1:
@@ -112,7 +114,9 @@ def multiple_messages(books: list[BookMetadata], torrent_name: str) -> list[dict
                     "color": RED,
                 }
             )
+            not_found=not_found + 1
             continue
+        found=found+1
         paths_string = ""
         if book.paths:
             book.paths
@@ -131,9 +135,7 @@ def multiple_messages(books: list[BookMetadata], torrent_name: str) -> list[dict
                         f"* (1) {book.paths[0]}\n  "
                         f"* ({len(book.paths)}) {book.paths[-1]}"
                     )
-        description = f"""Audiobook torrent completed; importing to library. The following information has been found:
-
-* **Author**: {book.author}
+        description = f"""* **Author**: {book.author}
 * **Length**: {book.length}
 * **Year**: {book.year}
 * **Narrators**: {book.narrators}
@@ -150,15 +152,28 @@ def multiple_messages(books: list[BookMetadata], torrent_name: str) -> list[dict
                 "thumbnail": {"url": book.image},
             }
         )
+    color=RED if found==0 else (ORANGE if not_found > 0 else GREEN)
+    embeds = [
+        {
+            "title": f"Torrent {torrent_name} {"completed." if torrent_complete else "started."}",
+            "description": (
+                f"{f"{found} books were matched. " if found > 0 else ""}"
+                f"{f"{not_found} books were not matched." if found > 0 else ""}"
+                ),
+            "color": color,
+            }
+    ] + embeds
     return embeds
 
 
-def send_book_info(books: list[BookMetadata], torrent_name: str):
+def send_book_info(
+    books: list[BookMetadata], torrent_name: str, torrent_complete: bool
+):
     if not constants.DISCORD_WEBHOOK:
         return
     if len(books) > constants.MAX_EMBEDS:
-        embeds = single_message(books, torrent_name)
+        embeds = single_message(books, torrent_name, torrent_complete)
     else:
-        embeds = multiple_messages(books, torrent_name)
+        embeds = multiple_messages(books, torrent_name, torrent_complete)
     for embed in embeds:
         send_message(embed=embed)
