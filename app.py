@@ -21,12 +21,11 @@ logger = logging.getLogger(__name__)
 def get_torrent_info(
     request: wrappers.Request, torrent_info: dict
 ) -> tuple[wrappers.Response, int] | None:
-    hash = request.args.get("hash")
-    tor_interface = qbittorrent_interface.QBittorrentInterface(
-        address=constants.QBITTORRENT_ADDRESS
-    )
+    hash = request.args.get("hash_v1")
     if not hash:
-        message = "Hash not found in torrent_complete request. Add as url argument, e.g. /torrent_complete?hash=abc123"
+        hash = request.args.get("hash_v2")
+    if not hash:
+        message = "Neither hash_v1 nor hash_v2 not found in torrent_complete request. Add as url argument, e.g. /torrent_complete?hash_v1=abc123"
         logger.error(message)
         return (
             jsonify(
@@ -37,6 +36,9 @@ def get_torrent_info(
             ),
             400,
         )
+    tor_interface = qbittorrent_interface.QBittorrentInterface(
+        address=constants.QBITTORRENT_ADDRESS
+    )
     try:
         torrent_info.update(tor_interface.get_torrent_info(hash))
     except qbittorrent_interface.QbittorrentError as e:
