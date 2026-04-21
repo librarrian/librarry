@@ -27,6 +27,14 @@ except ValueError:
 QBITTORRENT_ADDRESS = os.environ.get("QBITTORRENT_ADDRESS", "http://localhost:8080")
 
 
+# --------------------------------[ Jackett ]---------------------------------
+JACKETT_INTERNAL_ADDRESS = os.environ.get(
+    "JACKETT_INTERNAL_ADDRESS", "http://localhost:9117"
+)
+JACKETT_PUBLIC_ADDRESS = os.environ.get("JACKETT_PUBLIC_ADDRESS")
+JACKETT_API_KEY = os.environ.get("JACKETT_API_KEY")
+
+
 # ---------------------------------[ FLASK ]--------------------------------
 FLASK_PORT = os.environ.get("FLASK_PORT", 8080)
 

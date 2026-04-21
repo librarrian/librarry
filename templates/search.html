@@ -1,0 +1,89 @@
+<head>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/search.js') }}" defer></script>
+    <title>Search</title>
+</head>
+
+
+<div class="title-container">
+    <h1>Librarry</h1>
+</div>
+<div class="search-container" id="search-container">
+    <!-- <form method="post" class="search-form"> -->
+    <form method="post" class="search-form" onsubmit="showLoadingAnimation()">
+        <input type="text" name="query" placeholder="Enter book name" class="search-bar" value="{{ query }}" required>
+        <button type="submit" class="search-button">
+            <span class="button-text">Search</span>
+            <div class="button-spinner" id="button-spinner" style="display: none;">
+                <div class="spinner"></div>
+            </div>
+        </button>
+    </form>
+</div>
+<!--
+<div class="message-scroller" id="message-scroller">
+    <p id="scrolling-message"></p>
+</div>
+-->
+
+<div class="loading-animation" id="loading-animation" style="display: none;">
+    <video loading="lazy" muted="muted" playsinline="" src="/static/img/bookshelf.mp4" type="video/mp4"
+        autoplay="autoplay" loop="loop"></video>
+    <!-- <div class="spinner"></div> -->
+    <!-- <p>Searching...</p> -->
+</div>
+<!--
+{% if error %}
+  <p class="error-message">{{ error }}</p>
+{% endif %}
+
+{% if books %}
+<div id="filter-container">
+    <div class="filter-row">
+        <div class="filter-controls">
+            <select id="language-filter">
+                <option value="">All Languages</option>
+            </select>
+            <select id="bitrate-filter">
+                <option value="">All Bitrates</option>
+            </select>
+            <select id="format-filter">
+                <option value="">All Formats</option>
+            </select>
+            <input type="text" id="date-range-filter" placeholder="Select Date Range">
+        </div>
+        <div class="filter-buttons">
+            <button id="filter-button">Filter</button>
+        </div>
+    </div>
+    <div class="filter-row">
+        <div class="filter-controls">
+            <div class="file-size-filter-wrapper">
+                <label>File Size:</label>
+                <div id="file-size-slider"></div>
+            </div>
+        </div>
+        <div class="filter-buttons">
+             <button id="clear-button">Clear</button>
+        </div>
+    </div>
+</div>
+{% endif %} -->
+
+<table>
+    <tbody id="results-table-body">
+        {% for book in books %}
+        <tr class="result-row" data-title="{{ book.Title }}" data-link="{{ book.Link }}">
+            <td><img src="{{ book.Poster }}" alt="Cover Art" class="cover" width="100"></td>
+            <td>
+                <p class="book-title">{{ book.title }}</p>
+                <div class="property-results-container">
+                    <span class="book-title"><a href="{{ book.Details }}">{{ book.Title }}</a></span>
+                </div>
+            </td>
+            <td>
+                <button onclick="addTorrent('{{ book.Link }}')">Add</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>

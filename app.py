@@ -1,15 +1,23 @@
 import logging
 import json
-from flask import Flask, request, jsonify, wrappers, abort, send_from_directory
+from flask import (
+    Flask,
+    request,
+    jsonify,
+    wrappers,
+    abort,
+    send_from_directory,
+    render_template,
+)
 from utils import constants, logging_setup
 
 logging_setup.run()
-from utils import import_to_library, qbittorrent_interface
+from utils import import_to_library, qbittorrent_interface, jackett
 
 
 constants.validate_env()
 
-app = Flask(__name__, static_folder=constants.LOG_DIR)
+app = Flask(__name__)
 
 app.logger.propagate = True
 logger = logging.getLogger(__name__)
@@ -152,6 +160,34 @@ def logs(level: str):
         return send_from_directory(constants.LOG_DIR, file)
     else:
         abort(404)
+
+
+@app.route("/add_torrent", methods=["GET", "POST"])
+def add_torrent():
+    link = request.json.get("link")
+    if not link:
+        abort(500)
+    tor_interface = qbittorrent_interface.QBittorrentInterface(
+        address=constants.QBITTORRENT_ADDRESS
+    )
+    tor_interface.add_torrent(link)
+    return (
+        jsonify({"status": "success", "message": f"Torrent added!"}),
+        200,
+    )
+
+
+@app.route("/", methods=["GET", "POST"])
+def main():
+    books = []
+    query = ""
+    if request.method == "POST":
+        query = request.form["query"]
+        if query:
+            books = jackett.lookup_books(query)
+    for book in books:
+        logger.info("Found book: %s", book.get("Title"))
+    return render_template("search.html", books=books, query=query)
 
 
 if __name__ == "__main__":
