@@ -1,14 +1,14 @@
-
 import os
 import sys
 import logging
 from logging import handlers
 from . import constants
 
+
 def run():
 
     # Format logs
-    fmt = "%(levelname)s %(asctime)s %(filename)s:%(lineno)d]: %(message)s"
+    fmt = "%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s"
     datefmt = "%H:%M:%S"
     logging.basicConfig(
         level="DEBUG",
@@ -21,7 +21,6 @@ def run():
         fmt=fmt,
         datefmt=datefmt,
     )
-
 
     # stdout handler
     logging.getLogger().handlers[0].setLevel(constants.LOG_LEVEL)
