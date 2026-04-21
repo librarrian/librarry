@@ -47,7 +47,7 @@ def get_book_data(
     logger.debug(f"Audnexus repsonse: {book_data}")
     if not api_call.ok:
         message = f"Get request failed: {book_data}"
-        logger.info(message)
+        logger.debug(message)
         raise RuntimeError(message)
     hours, minutes = divmod(book_data["runtimeLengthMin"], 60)
     metadata = BookMetadata(
