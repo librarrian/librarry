@@ -259,7 +259,7 @@ def gpt_scrape(
                 metadata.paths.append(root.all_files[i].full_path)
         books.append(metadata)
     logger.info(
-        f"Matched books:\n{
+        f"{len(books)} matched books:\n{
             "\n".join([
                 f"{book.asin} - {book.title}" 
                 for book in books
