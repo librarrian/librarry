@@ -3,14 +3,28 @@ import requests
 import urllib
 from bs4 import BeautifulSoup
 import logging
+from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class BookMetadata:
+    asin: str = ""
+    author: str = ""
+    title: str = ""
+    year: str = ""
+    length: str = ""
+    narrators: str = ""
+    publisher: str = ""
+    image: str = ""
+    paths: list[str] = field(default_factory=list)
+
+
 def get_book_data(
     asin: str,
-) -> dict[str:str]:
-    """Fetches book metadata from the Audnexus API.
+) -> BookMetadata:
+    """fetches book metadata from the audnexus api.
 
     Args:
         asin: The ASIN of the book to fetch data for.
@@ -35,22 +49,24 @@ def get_book_data(
         message = f"Get request failed: {book_data}"
         logger.info(message)
         raise RuntimeError(message)
-    metadata = {}
-    metadata["asin"] = asin
-    metadata["author"] = book_data["authors"][0]["name"]
-    metadata["title"] = book_data["title"]
-    metadata["year"] = book_data["releaseDate"].split("-")[0]
     hours, minutes = divmod(book_data["runtimeLengthMin"], 60)
-    metadata["length"] = f"{hours:02d}:{minutes:02d}"
-    metadata["narrators"] = ", ".join(
-        [narrator["name"] for narrator in book_data["narrators"]][0:5]
-    ) + (", ..." if len(book_data["narrators"]) > 5 else "")
-    metadata["publisher"] = book_data["publisherName"]
-    metadata["image"] = book_data["image"]
+    metadata = BookMetadata(
+        asin=asin,
+        author=book_data["authors"][0]["name"],
+        title=book_data["title"],
+        year=book_data["releaseDate"].split("-")[0],
+        length=f"{hours:02d}:{minutes:02d}",
+        narrators=", ".join(
+            [narrator["name"] for narrator in book_data["narrators"]][0:5]
+        )
+        + (", ..." if len(book_data["narrators"]) > 5 else ""),
+        publisher=book_data["publisherName"],
+        image=book_data["image"],
+    )
     return metadata
 
 
-def maybe_get_books_data(asins: list[str]) -> list[dict]:
+def maybe_get_books_data(asins: list[str]) -> list[BookMetadata]:
     """Fetches book metadata for a list of ASINs, ignoring any that fail.
 
     Args:
@@ -71,7 +87,7 @@ def maybe_get_books_data(asins: list[str]) -> list[dict]:
     return out
 
 
-def lookup_book(query: str, limit: int = 20) -> list[dict]:
+def lookup_book(query: str, limit: int = 20) -> list[BookMetadata]:
     """Retrieve book data from Audible and Audnexus based on a search query.
 
     First queries Audible for all ASINs displayed on the search results page for the given query,

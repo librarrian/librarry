@@ -5,6 +5,7 @@ import logging
 import json
 import re
 from . import constants, gpt_lib
+from .audible_scrape import BookMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -26,20 +27,14 @@ def get_files(hash: str) -> list[str]:
 
 
 def get_book_data(
-    torrent_info: dict[str : str | int],
-) -> list[dict]:
+    torrent_info: dict[str, str | int],
+) -> list[BookMetadata]:
 
     files = get_files(torrent_info["hash"])
-    logger.debug(f"Files found for {torrent_info['name']}: {files}")
+    torrent_name = torrent_info["name"]
+    logger.debug(f"Files found for {torrent_name}: {files}")
 
-    books = gpt_lib.find_books(torrent_info["name"], files)
-    found = [book for book in books if book.get("asin")]
+    books = gpt_lib.find_books(torrent_name, files)
+    found = [book for book in books if book.asin]
 
-    # json_file = re.sub(r"[^a-zA-Z0-9\s\.\-_]", "", torrent_info["name"])[:200]
-    # with open(f"/tmp/{json_file}.json", "w") as f:
-    #     json.dump(found, f)
-    # with open(f"/tmp/{json_file}.json", "r") as f:
-    #     found = json.load(f)
-
-    # send_discord_message(found, torrent_name, max_embeds)
     return found

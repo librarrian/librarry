@@ -1,17 +1,15 @@
 from openai import OpenAI, OpenAIError
+from openai.types.responses import ParsedResponseFunctionToolCall
 import sys
-
-# from . import audible_scrape
-# from . import dir
-
-
 import json
 import os
 from typing import List, Literal
 import backoff
 import logging
 from . import schema, directory_tree, constants, audible_scrape
+import warnings
 
+warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 logger = logging.getLogger(__name__)
 
 with open(
@@ -28,6 +26,18 @@ with open(
     "r",
 ) as f:
     GROUP_FILES_PROMPT = f.read()
+
+
+def serialize_as_json(input):
+    if isinstance(input, list):
+        for i, val in enumerate(input):
+            input[i] = serialize_as_json(val)
+    if isinstance(input, dict):
+        for k, v in input.items():
+            input[k] = serialize_as_json(v)
+    if isinstance(input, ParsedResponseFunctionToolCall):
+        return input.to_dict()
+    return input
 
 
 @backoff.on_exception(backoff.constant, RuntimeError, max_tries=3, interval=0)
@@ -63,21 +73,39 @@ def group_book_files(collection_name: str, root: directory_tree.Root) -> schema.
         },
     ]
     try:
-        logger.debug(f"Group files input: {inputs}")
         response = client.responses.parse(
             model=constants.GPT_MODEL, input=inputs, text_format=schema.Books
         )
-        logger.debug(f"Group files response: {response}")
+        logger.debug(
+            f"Group files response: {json.dumps(response.to_dict(), indent=2)}"
+        )
     except OpenAIError as e:
         raise RuntimeError(f"OpenAI error: {e}")
     books = response.output_parsed
-    logger.info(f"Books found: {[book.title for book in books.books]}")
+    logger.info(
+        f"Books found: \n{"\n".join([f"'{book.title}' - {book.authors[0]}'" for book in books.books])}"
+    )
     if not books:
         raise RuntimeError("Unable to group book files")
     return books
 
 
 def create_books_input_content(books: schema.Books):
+    """
+    Transform a Books object into dictionary input content and file mappings.
+
+    Converts a collection of books into two dictionaries: one containing book metadata
+    indexed by ID, and another mapping book IDs to their associated files.
+
+    Args:
+        books (schema.Books): A Books object returned in a OpenAI response.
+
+    Returns:
+        A tuple containing:
+            - input_content (dict[int, dict]): Dictionary mapping book IDs to book metadata dictionaries.
+              Each metadata dict contains 'id', 'title', 'possible authors', and 'previous queries'.
+            - files (dict): Dictionary mapping book IDs to lists of FileRange objects.
+    """
     input_content = {}
     files: dict[int, list[schema.FileRange]] = {}
     i = 1
@@ -94,7 +122,32 @@ def create_books_input_content(books: schema.Books):
 
 
 def find_asins(input_books: dict):
-    logger.info(f"Fiding asins: {input_books}")
+    """
+    Use GPT to find ASINs (Amazon Standard Identification Numbers) for books.
+
+    Matching books to their ASINs enables scraping for book metadata. This function has GPT query
+    audible, and refine its serach until all books are matched or the lookup limit is reached.
+
+    Args:
+        input_books (dict): A dictionary where each key is a book ID and each value contains
+                           book information (e.g., title, author, series) and a list of
+                           'previous queries' made for that book.
+
+    Returns:
+        list[schema.MatchedBook]: A list of matched books containing ASIN information and other
+                                  relevant details retrieved from Audible.
+
+    Raises:
+        RuntimeError: If an OpenAI API error occurs during the request.
+
+    Notes:
+        - The function uses the Audible search tool via OpenAI's function calling feature.
+        - It will loop until either all books are matched, no more function calls are returned,
+          or the maximum number of lookups (constants.NUM_LOOKUPS) is exceeded.
+        - Matched books are removed from input_books as they are found.
+        - Previous queries for each book are tracked to avoid duplicate searches.
+    """
+    logger.debug(f"Fiding asins: {json.dumps(input_books, indent=2)}")
     client = OpenAI()
 
     tools = [
@@ -141,23 +194,23 @@ def find_asins(input_books: dict):
             id = params["id"]
             if id in input_books:
                 result = audible_scrape.lookup_book(query)
-
+                result = str(result).replace(", paths=[]", "")
                 inputs.append(function_call)
                 inputs.append(
                     {
                         "type": "function_call_output",
                         "call_id": function_call.call_id,
-                        "output": str(result),
+                        "output": result,
                     }
                 )
                 input_books[id]["previous queries"] += [query]
             logger.debug(input_books)
-            inputs.append(
-                {
-                    "role": "user",
-                    "content": str(list(input_books.values())),
-                }
-            )
+        inputs.append(
+            {
+                "role": "user",
+                "content": str(list(input_books.values())),
+            }
+        )
         try:
             response = client.responses.parse(
                 model=constants.GPT_MODEL,
@@ -165,7 +218,12 @@ def find_asins(input_books: dict):
                 tools=tools,
                 text_format=schema.MatchedBooks,
             )
-            logger.debug(response)
+            logging.debug(
+                f"Find ASINs request: {json.dumps(serialize_as_json(inputs), indent=2)}"
+            )
+            logger.debug(
+                f"Find ASINs response: {json.dumps(response.to_dict(), indent=2)}"
+            )
         except OpenAIError as e:
             raise RuntimeError(f"OpenAI error: {e}")
         matched_books = response.output_parsed
@@ -190,30 +248,42 @@ def gpt_scrape(
     input_content: dict,
     files_dict: dict[int, list[schema.FileRange]],
     root: directory_tree.Root,
-) -> list[dict]:
+) -> list[audible_scrape.BookMetadata]:
     output_books = find_asins(input_content)
-    logger.info(f"Matched books: {"\n".join([book.asin for book in output_books])}")
-    books = []
+    books: list[audible_scrape.BookMetadata] = []
     for book in output_books:
-        data_list = audible_scrape.maybe_get_books_data([book.asin])
-        data: dict = data_list[0] if data_list else {"asin": ""}
-        data["paths"] = []
+        metadatas = audible_scrape.maybe_get_books_data([book.asin])
+        metadata = metadatas[0] if metadatas else audible_scrape.BookMetadata()
         for file_range in files_dict[book.id]:
             for i in range(file_range.start, file_range.end):
-                data["paths"] += [root.all_files[i].full_path]
-        books.append(data)
+                metadata.paths.append(root.all_files[i].full_path)
+        books.append(metadata)
+    logger.info(
+        f"Matched books:\n{
+            "\n".join([
+                f"{book.asin} - {book.title}" 
+                for book in books
+            ])}"
+    )
     if not books:
         raise RuntimeError("No books found in the response from GPT.")
 
     return books
 
 
-def find_books(collection_name: str, files: list[str]) -> list[dict]:
+def find_books(
+    collection_name: str, files: list[str]
+) -> list[audible_scrape.BookMetadata]:
+    """Given a collection name and a list of files, group files into individual books and return
+    with metadata
+
+    Uses ChatGPT and scraping of audible to group files into books and retrieve metadata. Returns
+    the books as dictionaries containing
+    """
+
     root = directory_tree.Root()
     for file in files:
         root.add_file(file)
     book_files = group_book_files(collection_name, root)
     input_content, files_dict = create_books_input_content(book_files)
-    logger.debug(input_content)
-    logger.debug(files_dict)
     return gpt_scrape(input_content, files_dict, root)
