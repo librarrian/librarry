@@ -9,24 +9,29 @@ ORANGE = 16737792
 
 
 def send_message(
-    embed: dict = {},
+    embed: dict | None = None,
     title: str | None = None,
     description: str | None = None,
     color: int | None = None,
+    thumbnail: str | None = None,
 ):
     if not constants.DISCORD_WEBHOOK:
         return
     if not embed:
-        if title:
-            embed["title"] = title
-        if description:
-            embed["description"] = description
-        if color:
-            embed["color"] = color
+        embed = {}
+    if title:
+        embed["title"] = title
+    if description:
+        embed["description"] = description
+    if color:
+        embed["color"] = color
+    if thumbnail:
+        embed["thumbnail"] = {"url": thumbnail}
     requests.post(
         constants.DISCORD_WEBHOOK,
         json={"embeds": [embed]},
         headers={"Content-Type": "application/json"},
+        timeout=10,
     )
 
 
@@ -58,7 +63,7 @@ def single_message(
             color = ORANGE
         else:
             color = GREEN
-        not_found_title = f"{len(not_found)} books not found"
+        not_found_title = f"{len(not_found)} book(s) not found"
     else:
         color = RED
         not_found_title = f"'{torrent_name}' {"completed. " if torrent_complete else "started. "}No books found ({len(not_found)} total)"
@@ -67,7 +72,7 @@ def single_message(
     if found:
         embeds.append(
             {
-                "title": f"'{torrent_name}' {"completed. " if torrent_complete else "started. "}{len(found)} books found",
+                "title": f"'{torrent_name}' {"completed. " if torrent_complete else "started. "}{len(found)} book(s) found",
                 "color": color,
                 "description": "",
             }
@@ -97,8 +102,8 @@ def multiple_messages(
     books: list[BookMetadata], torrent_name: str, torrent_complete: bool
 ) -> list[dict]:
     embeds = []
-    found=0
-    not_found=0
+    found = 0
+    not_found = 0
     for book in books:
         dir = ""
         if len(book.paths) == 1:
@@ -114,9 +119,9 @@ def multiple_messages(
                     "color": RED,
                 }
             )
-            not_found=not_found + 1
+            not_found = not_found + 1
             continue
-        found=found+1
+        found = found + 1
         paths_string = ""
         if book.paths:
             book.paths
@@ -152,16 +157,16 @@ def multiple_messages(
                 "thumbnail": {"url": book.image},
             }
         )
-    color=RED if found==0 else (ORANGE if not_found > 0 else GREEN)
+    color = RED if found == 0 else (ORANGE if not_found > 0 else GREEN)
     embeds = [
         {
-            "title": f"Torrent {torrent_name} {"completed." if torrent_complete else "started."}",
+            "title": f"Torrent '{torrent_name}' {"**completed**." if torrent_complete else "**started**."}",
             "description": (
-                f"{f"{found} books were matched. " if found > 0 else ""}"
-                f"{f"{not_found} books were not matched." if found > 0 else ""}"
-                ),
+                f"{f"{found} book(s) matched. " if found > 0 else ""}"
+                f"{f"{not_found} book(s) not matched." if not_found > 0 else ""}"
+            ),
             "color": color,
-            }
+        }
     ] + embeds
     return embeds
 
