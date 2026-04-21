@@ -27,7 +27,7 @@ def get_files(hash: str) -> list[str]:
 
 
 def get_book_data(
-    torrent_info: dict[str, str | int],
+    torrent_info: dict,
 ) -> list[BookMetadata]:
 
     files = get_files(torrent_info["hash"])
