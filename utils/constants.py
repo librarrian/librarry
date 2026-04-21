@@ -32,9 +32,10 @@ FLASK_PORT = os.environ.get("FLASK_PORT", 8080)
 
 
 # ---------------------------------[ REDIS ]--------------------------------
-REDIS_HOST = os.environ.get("REDIS_HOST", "http://localhost")
+REDIS_HOST = os.environ.get("REDIS_HOST")
 REDIS_PORT = os.environ.get("REDIS_PORT", 6379)
 REDIS_DB = os.environ.get("REDIS_DB", 0)
+REDIS_TTL_HOURS = os.environ.get("REDIS_TTL_HOURS", 48)
 
 
 # ---------------------------------[ LOGS ]---------------------------------
@@ -88,3 +89,4 @@ def validate_env():
     validate_int("FLASK_PORT", FLASK_PORT)
     validate_int("REDIS_PORT", REDIS_PORT)
     validate_int("REDIS_DB", REDIS_DB)
+    validate_int("REDIS_TTL_HOURS", REDIS_TTL_HOURS)
