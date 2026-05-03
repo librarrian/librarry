@@ -8,6 +8,7 @@ import os
 import shutil
 import redis
 import backoff
+from backoff._typing import _Handler
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import audiobook_tool
 from . import parse_books, constants, discord_lib
@@ -50,8 +51,19 @@ def mark_processing(torrent_hash: str):
     )
 
 
+def give_up_read(details):
+    torrent_info = details["args"][0]
+    r.delete(torrent_info["hash"])
+    logger.error(
+        "Book data still processing after 10 minutes for '%s'. Giving up.",
+        torrent_info["name"],
+    )
+
+
 # @backoff.on_predicate(backoff.expo, lambda x: x == PROCESSING_STRING, max_time=600)
-@backoff.on_exception(backoff.expo, ProcessingError, max_time=600, logger=None)
+@backoff.on_exception(
+    backoff.expo, ProcessingError, max_time=600, logger=None, on_giveup=give_up_read
+)
 def read_database(torrent_info: dict) -> str | None:
     try:
         books_string = r.get(torrent_info["hash"])
@@ -89,8 +101,11 @@ def save_book_data(torrent_info: dict) -> None:
 
 def import_books(torrent_info: dict, overwrite: bool) -> None:
     full_discord_message = True
-    books_string = read_database(torrent_info)
-    logging.debug("Read from databas: %s", books_string)
+    try:
+        books_string = read_database(torrent_info)
+    except ProcessingError as e:
+        books_string = None
+    logging.debug("Read from database: %s", books_string)
     torrent_name = torrent_info["name"]
     if not books_string:
         logger.debug("No book data found in database for '%s'", torrent_name)

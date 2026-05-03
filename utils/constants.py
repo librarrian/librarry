@@ -31,7 +31,10 @@ QBITTORRENT_ADDRESS = os.environ.get("QBITTORRENT_ADDRESS", "http://localhost:80
 JACKETT_INTERNAL_ADDRESS = os.environ.get(
     "JACKETT_INTERNAL_ADDRESS", "http://localhost:9117"
 )
-JACKETT_PUBLIC_ADDRESS = os.environ.get("JACKETT_PUBLIC_ADDRESS")
+# Set this if you are accessing Librarry from a different host than the Jackett internal address.
+JACKETT_PUBLIC_ADDRESS = os.environ.get(
+    "JACKETT_PUBLIC_ADDRESS", JACKETT_INTERNAL_ADDRESS
+)
 JACKETT_API_KEY = os.environ.get("JACKETT_API_KEY")
 
 
@@ -40,18 +43,20 @@ FLASK_PORT = os.environ.get("FLASK_PORT", 8080)
 
 
 # ---------------------------------[ REDIS ]--------------------------------
-REDIS_HOST = os.environ.get("REDIS_HOST")
+REDIS_HOST = os.environ.get("REDIS_HOST", "http://localhost")
 REDIS_PORT = os.environ.get("REDIS_PORT", 6379)
 REDIS_DB = os.environ.get("REDIS_DB", 0)
 REDIS_TTL_HOURS = os.environ.get("REDIS_TTL_HOURS", 48)
 
+# ------------------------------[ FlareSolverr ]-----------------------------
+FLARESOLVERR_ADDRESS = os.environ.get("FLARESOLVERR_ADDRESS", "http://localhost:8191")
 
-# ---------------------------------[ LOGS ]---------------------------------
+# ---------------------------------[ LOGS ]----------------------------------
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
 LOG_DIR = os.environ.get("LOG_DIR", "/tmp/logs")
 
 
-# ---------------------------------[ GPT ]--------------------------------
+# ----------------------------------[ GPT ]----------------------------------
 # Chat GPT model to use in lookups.
 GPT_MODEL = os.environ.get("GPT_MODEL", "gpt-4.1-mini")
 

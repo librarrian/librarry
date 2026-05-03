@@ -195,6 +195,7 @@ def find_asins(input_books: dict):
             if id in input_books:
                 result = audible_scrape.lookup_book(query)
                 result = str(result).replace(", paths=[]", "")
+                logger.debug(f"Audible search result for query '{query}': {result}")
                 inputs.append(function_call)
                 inputs.append(
                     {

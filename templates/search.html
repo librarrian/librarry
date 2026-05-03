@@ -10,14 +10,42 @@
 </div>
 <div class="search-container" id="search-container">
     <!-- <form method="post" class="search-form"> -->
-    <form method="post" class="search-form" onsubmit="showLoadingAnimation()">
-        <input type="text" name="query" placeholder="Enter book name" class="search-bar" value="{{ query }}" required>
-        <button type="submit" class="search-button">
-            <span class="button-text">Search</span>
-            <div class="button-spinner" id="button-spinner" style="display: none;">
-                <div class="spinner"></div>
+    <!-- <form method="post" class="search-form" onsubmit="showLoadingAnimation()"> -->
+    <form class="search-form" onsubmit="event.preventDefault(); startSearch()">
+        <div class="search-row">
+            <input type="text" name="query" placeholder="Enter book name" class="search-bar" value="{{ query }}" required>
+            <button type="submit" class="search-button">
+                <span class="button-text">Search</span>
+                <div class="button-spinner" id="button-spinner" style="display: none;">
+                    <div class="spinner"></div>
+                </div>
+            </button>
             </div>
-        </button>
+        <div class="search-options">
+            <select name="base_url" class="url-select">
+                {% set urls = [
+                "https://audiobookbay.lu",
+                "http://audiobookbay.se",
+                "http://audiobookbay.fi",
+                "http://audiobookbay.is",
+                "http://audiobookbay.ws/",
+                "http://theaudiobookbay.se/"
+                ] %}
+                {% for url in urls %}
+                <option value="{{ url }}" {% if url==base_url %}selected{% endif %}>{{ url | replace("https://", "") |
+                    replace("http://", "") | replace("/", "") }}</option>
+                {% endfor %}
+            </select>
+            {% if jackett_available %}
+            <select name="scraper" class="url-select">
+                <option value="local" {% if scraper=="local" %}selected{% endif %}>Local</option>
+                <option value="jackett" {% if scraper=="jackett" %}selected{% endif %}>Jackett</option>
+            </select>
+            {% endif %}
+            <label class="title-only-label">
+                <input type="checkbox" name="title_only" value="1" {% if title_only %}checked{% endif %}> Title only
+            </label>
+        </div>
     </form>
 </div>
 <!--
@@ -26,12 +54,6 @@
 </div>
 -->
 
-<div class="loading-animation" id="loading-animation" style="display: none;">
-    <video loading="lazy" muted="muted" playsinline="" src="/static/img/bookshelf.mp4" type="video/mp4"
-        autoplay="autoplay" loop="loop"></video>
-    <!-- <div class="spinner"></div> -->
-    <!-- <p>Searching...</p> -->
-</div>
 <!--
 {% if error %}
   <p class="error-message">{{ error }}</p>
@@ -69,9 +91,13 @@
     </div>
 </div>
 {% endif %} -->
+<div class="error-box" id="error-box" style="display: none;">
+    <p></p>
+</div>
 
 <table>
     <tbody id="results-table-body">
+        <!-- {% if books %}
         {% for book in books %}
         <tr class="result-row" data-title="{{ book.Title }}" data-link="{{ book.Link }}">
             <td><img src="{{ book.Poster }}" alt="Cover Art" class="cover" width="100"></td>
@@ -86,4 +112,14 @@
             </td>
         </tr>
         {% endfor %}
+        {% elif query %}
+        <tr>
+            <td colspan="3" class="no-results">No results found for "{{ query }}"</td>
+        </tr>
+        {% endif %} -->
     </tbody>
+</table>
+<div class="loading-animation" id="loading-animation" style="display: none;">
+    <video loading="lazy" muted="muted" playsinline="" src="/static/img/bookshelf.mp4" type="video/mp4"
+        autoplay="autoplay" loop="loop"></video>
+</div>

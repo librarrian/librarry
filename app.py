@@ -3,17 +3,18 @@ import json
 from flask import (
     Flask,
     request,
+    Response,
     jsonify,
     wrappers,
     abort,
     send_from_directory,
     render_template,
+    stream_with_context,
 )
 from utils import constants, logging_setup
 
 logging_setup.run()
-from utils import import_to_library, qbittorrent_interface, jackett
-
+from utils import import_to_library, qbittorrent_interface, jackett, abb_scraper
 
 constants.validate_env()
 
@@ -177,18 +178,87 @@ def add_torrent():
     )
 
 
-@app.route("/", methods=["GET", "POST"])
+# @app.route("/", methods=["GET", "POST"])
+# def main():
+#     books = []
+#     query = ""
+#     error = None
+#     base_url = "https://audiobookbay.lu"
+#     title_only = True
+#     if request.method == "POST":
+#         query = request.form["query"]
+#         base_url = request.form.get("base_url", "https://audiobookbay.lu")
+#         title_only = request.form.get("title_only") == "1"
+#         logger.info(
+#             f"Search query: {query}, base_url: {base_url}, title_only: {title_only}"
+#         )
+#         if query:
+#             try:
+#                 # books = jackett.lookup_books(query)
+#                 books = abb_scraper.scrape_audiobookbay(
+#                     query, title_only=title_only, base_url=base_url
+#                 )
+#             except Exception as e:
+#                 logger.error(f"Error scraping AudioBookBay: {e}")
+#                 error = f"Error scraping AudioBookBay: {e}"
+#     return render_template(
+#         "search.html",
+#         books=books,
+#         query=query,
+#         error=error,
+#         base_url=base_url,
+#         title_only=title_only,
+#     )
+@app.route("/", methods=["GET"])
 def main():
-    books = []
-    query = ""
-    if request.method == "POST":
-        query = request.form["query"]
-        if query:
-            books = jackett.lookup_books(query)
-    for book in books:
-        logger.info("Found book: %s", book.get("Title"))
-    return render_template("search.html", books=books, query=query)
+    return render_template(
+        "search.html",
+        query="",
+        error=None,
+        base_url="https://audiobookbay.lu",
+        title_only=True,
+        jackett_available=(constants.JACKETT_API_KEY is not None),
+        scraper="local",
+    )
 
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=constants.FLASK_PORT, debug=True)
+@app.route("/search/stream")
+def search_stream():
+    query = request.args.get("query", "")
+    base_url = request.args.get("base_url", "https://audiobookbay.lu")
+    title_only = request.args.get("title_only") == "1"
+    scraper = request.args.get("scraper", "local")
+    logger.info(
+        f"Search query: {query}, base_url: {base_url}, title_only: {title_only}, scraper: {scraper}"
+    )
+
+    def generate():
+        try:
+            if scraper == "local":
+                for book in abb_scraper.get_books(
+                    query, title_only=title_only, base_url=base_url
+                ):
+                    logger.info(f"Streaming book: {book.get('Title')}")
+                    yield f"data: {json.dumps(book)}\n\n"
+            elif scraper == "jackett":
+                for book in jackett.lookup_books(query):
+                    logger.info(f"Streaming book: {book.get('Title')}")
+                    yield f"data: {json.dumps(book)}\n\n"
+            else:
+                logger.error(f"Invalid scraper option: {scraper}")
+                yield f"data: {json.dumps({'error': f'Invalid scraper option: {scraper}'})}\n\n"
+        except Exception as e:
+            logger.error(f"Error scraping AudioBookBay: {e}")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        yield "data: DONE\n\n"
+
+    response = Response(stream_with_context(generate()), mimetype="text/event-stream")
+    response.headers["Cache-Control"] = "no-cache"
+    response.headers["X-Accel-Buffering"] = (
+        "no"  # disables nginx buffering if behind nginx
+    )
+    return response
+
+
+# if __name__ == "__main__":
+#     app.run(host="0.0.0.0", port=constants.FLASK_PORT, debug=True)

@@ -56,6 +56,7 @@ ENV PYTHONUNBUFFERED=1 \
   FLASK_ENV=production
 
 # Expose the port
-EXPOSE 8080
+EXPOSE ${FLASK_PORT:-8080}
 
-CMD [ "gunicorn", "--bind", "0.0.0.0:8080", "--workers", "1", "--threads", "4", "--timeout", "120", "app:app" ]
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${FLASK_PORT:-8080} --workers 1 --threads 4 --timeout 120 app:app"]
+# CMD [ "gunicorn", "--bind", "0.0.0.0:8080", "--workers", "1", "--threads", "4", "--timeout", "120", "app:app" ]

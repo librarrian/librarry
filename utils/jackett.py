@@ -5,6 +5,12 @@ from . import constants
 logger = logging.getLogger(__name__)
 
 
+def make_jackett_url_public(url: str) -> str:
+    return url.replace(
+        constants.JACKETT_INTERNAL_ADDRESS, constants.JACKETT_PUBLIC_ADDRESS
+    )
+
+
 def get_magnet(url: str | None):
     if not url:
         logger.error(
@@ -12,12 +18,17 @@ def get_magnet(url: str | None):
         )
 
     try:
+        logging.info("Fetching magnet URL for: %s", url)
         if url.startswith("magnet:"):
             return url
-        url = url.replace(
-            constants.JACKETT_PUBLIC_ADDRESS, constants.JACKETT_INTERNAL_ADDRESS
-        )
+        # url = make_jackett_url_public(url)
+        # logger.info("Got Jackett URL: %s", url)
         response = requests.get(url, allow_redirects=False, timeout=60)
+        logger.info(
+            "code: %s, Redirected URL: %s",
+            response.status_code,
+            response.headers.get("Location"),
+        )
         if response.status_code in [301, 302]:
             return response.headers.get("Location", url)
     except Exception as e:
@@ -40,7 +51,11 @@ def lookup_books(query):
     except Exception as e:
         logger.error("Error reading jackett: %s", response.text)
         raise e
-    # for book in books:
-    #     if not book.get("MagnetUri"):
-    #         book["MagnetUri"] = get_magnet(book.get("Link"))
-    return books
+    for book in books:
+        if book.get("MagnetUri"):
+            book["Link"] = book["MagnetUri"]
+        else:
+            book["Link"] = get_magnet(book.get("Link"))
+        if book.get("Poster"):
+            book["Poster"] = make_jackett_url_public(book["Poster"])
+        yield book

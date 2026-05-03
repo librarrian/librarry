@@ -70,25 +70,110 @@ img.cover {
     box-sizing: border-box;
 }
 */
-.search-form {
+/* .search-form {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
 }
+*/ .search-form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin: 20px 0;
+}
+
+.search-row {
+    display: flex;
+    gap: 8px;
+        width: 480px;
+        max-width: 90vw;
+}
+
+.search-options {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+        width: 480px;
+        max-width: 90vw;
+}
+
+.url-select {
+    flex: 1;
+    min-width: 0;
+    padding: 8px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    color: #333;
+    font-size: 0.85rem;
+}
+
+.scraper-select {
+    flex: 1;
+    padding: 8px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    color: #333;
+    font-size: 0.9rem;
+}
+
+.title-only-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+/* .error-box {
+    width: 300px;
+    margin: 10px auto;
+    padding: 10px 15px;
+    background-color: #fdecea;
+    border: 1px solid #f5c6cb;
+    border-radius: 5px;
+    color: #a94442;
+    font-size: 0.9rem;
+    text-align: center;
+    word-break: break-word;  
+    overflow-wrap: break-word;
+} */
+.error-box {
+    width: 300px;
+    max-width: 90vw;
+    margin: 10px auto;
+    padding: 10px 15px;
+    background-color: #fdecea;
+    border: 1px solid #f5c6cb;
+    border-radius: 5px;
+    color: #a94442;
+    font-size: 0.9rem;
+    text-align: center;
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+@media (max-width: 500px) {
+    .search-row,
+        .search-options {
+            width: 100%;
+            max-width: 90vw;
+    }
+}
 
 .search-bar {
-    width: 100%;
-    /* Make the search bar full width */
+    flex: 1;
+        min-width: 0;
     padding: 10px;
-    /* Adjust padding as needed */
-    box-sizing: border-box;
-    /* Ensure padding is included in the width */
-    margin-bottom: 10px;
-    /* Add some space between the input and button */
-    /* Properties from the old input[type="text"] rule are now here */
     border-radius: 5px;
-    width: 300px;
+        border: 1px solid #ccc;
+        font-size: 1rem;
+    box-sizing: border-box;
+    margin-bottom: 0;
 }
 
 /*
@@ -105,10 +190,8 @@ img.cover {
 }
 */
 .search-button {
-    width: auto;
-    /* Set the button width to auto */
+    white-space: nowrap;
     padding: 10px 20px;
-    /* Add padding to the button */
     background-color: #512da8;
     border: none;
     border-radius: 5px;
@@ -116,8 +199,13 @@ img.cover {
     font-size: 1rem;
     cursor: pointer;
     transition: background-color 0.3s;
+    width: auto;
+        margin-bottom: 0;
 }
 
+.search-button:hover {
+    background-color: #673ab7;
+}
 /* Loading spinner styles */
 .loading-spinner {
     display: none;
