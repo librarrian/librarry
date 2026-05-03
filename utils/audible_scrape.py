@@ -90,9 +90,9 @@ def maybe_get_books_data(asins: list[str]) -> list[BookMetadata]:
 def lookup_book(query: str, limit: int = 20) -> list[BookMetadata]:
     """Retrieve book data from Audible and Audnexus based on a search query.
 
-    First queries Audible for all ASINs displayed on the search results page for the given query,
-    then looks up each ASIN in the Audnexus API to retrieve metadata for each book.
-    Any ASINs that fail to fetch from Audnexus are ignored.
+    First queries Audible API given query, then looks up each ASIN in the
+    Audnexus API to retrieve metadata for each book. Any ASINs that fail
+    to fetch from Audnexus are ignored.
 
     Args:
         query: The search query to use.
@@ -101,16 +101,15 @@ def lookup_book(query: str, limit: int = 20) -> list[BookMetadata]:
         A list of dictionaries containing metadata for each successfully fetched book.
         See get_book_data for the structure of each dictionary.
     """
+
     logger.info(f"Querying Audible: {query}")
-    results = requests.get(
-        f"https://www.audible.com/search?keywords={urllib.parse.quote_plus(query)}"
+    response = requests.get(
+        f"https://api.audible.com/1.0/catalog/products?num_results={limit}&keywords="
+        f"{urllib.parse.quote_plus(query)}&products_sort_by=Relevance"
     )
-    soup = BeautifulSoup(results.content, "html.parser")
-    book_divs = soup.find_all("div", class_="adbl-asin-impression")
-    asins = []
-    for i, book in enumerate(book_divs):
-        if i > limit:
-            break
-        asins.append(book["data-asin"])
-    logger.debug(f"ASINs found: {asins}")
+    products = response.json().get("products")
+    if not products:
+        logger.debug(f"No products found for query '{query}'")
+        return []
+    asins = [product["asin"] for product in products if product.get("asin")]
     return maybe_get_books_data(asins)
