@@ -7,16 +7,26 @@ function showLoadingAnimation() {
     // setTimeout(showScrollingMessages, 5000);
 }
 
-function addTorrent(link) {
+function addTorrent(link, source, book_title, btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;margin:0 auto;"></div>';
+
     fetch("/add_torrent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ link: link }),
+        body: JSON.stringify({ link: link, source: source, book_title: book_title }),
     })
         .then((response) => response.json())
         .then((data) => {
-            alert(data.message);
-            //   hideLoadingSpinner();
+            btn.innerHTML = "✓";
+            btn.style.opacity = "0.6";
+            btn.style.backgroundColor = "#227e26";
+
+        })
+        .catch(() => {
+            btn.innerHTML = "Error";
+            btn.style.backgroundColor = "#dc3545";
+            btn.disabled = false;
         });
 }
 
@@ -69,17 +79,28 @@ function appendBook(book) {
     const tbody = document.getElementById('results-table-body');
     const row = document.createElement('tr');
     row.className = 'result-row';
+
+    const badges = [book.Language, book.Format, book.Bitrate, book.fileSize]
+        .filter(Boolean)
+        .map(v => `<span class="book-badge">${v}</span>`)
+        .join('');
+
+    const poster = book.Poster
+        ? `<img src="${book.Poster}" alt="Cover Art" class="cover">`
+        : `<div class="cover-placeholder">No cover</div>`;
+
     row.innerHTML = `
-        <td><img src="${book.Poster}" alt="Cover Art" class="cover" width="100"></td>
+        <td>${poster}</td>
         <td>
-            <div class="property-results-container">
-                <span class="book-title"><a href="${book.Details}">${book.Title}</a></span>
-            </div>
+            <a class="book-title" href="${book.Details}">${book.Title}</a>
+            <div class="book-badges">${badges}</div>
+            ${book.Date ? `<span class="book-date">${book.Date}</span>` : ''}
         </td>
-        <td><button onclick="addTorrent('${book.Link}')">Add</button></td>
+        <td><button class="card-add-button" onclick="addTorrent('${book.Link}', '${book.Source}', '${book.Title}', this)">Add</button></td>
     `;
     tbody.appendChild(row);
 }
+
 
 function showError(message) {
     // reuse your existing error box
