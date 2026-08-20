@@ -1,17 +1,18 @@
 import requests
 import logging
-from . import constants
+from . import environment
 
 logger = logging.getLogger(__name__)
 
+SOURCE = "jackett"
 
 def make_jackett_url_public(url: str) -> str:
     return url.replace(
-        constants.JACKETT_INTERNAL_ADDRESS, constants.JACKETT_PUBLIC_ADDRESS
+        environment.JACKETT_INTERNAL_ADDRESS, environment.JACKETT_PUBLIC_ADDRESS
     )
 
 
-def get_magnet(url: str | None):
+def get_magnet(url: str) -> str:
     if not url:
         logger.error(
             f"Error fetching magnet URL: empty link",
@@ -21,8 +22,6 @@ def get_magnet(url: str | None):
         logging.info("Fetching magnet URL for: %s", url)
         if url.startswith("magnet:"):
             return url
-        # url = make_jackett_url_public(url)
-        # logger.info("Got Jackett URL: %s", url)
         response = requests.get(url, allow_redirects=False, timeout=60)
         logger.info(
             "code: %s, Redirected URL: %s",
@@ -39,8 +38,8 @@ def get_magnet(url: str | None):
 
 def lookup_books(query):
     response = requests.get(
-        f"{constants.JACKETT_INTERNAL_ADDRESS}/api/v2.0/indexers/all/results?"
-        f"apikey={constants.JACKETT_API_KEY}&Query={query}&Tracker%5B%5D=audiobookbay",
+        f"{environment.JACKETT_INTERNAL_ADDRESS}/api/v2.0/indexers/all/results?"
+        f"apikey={environment.JACKETT_API_KEY}&Query={query}&Tracker%5B%5D=audiobookbay",
         timeout=60,
     )
     if response.status_code != 200:
@@ -52,10 +51,10 @@ def lookup_books(query):
         logger.error("Error reading jackett: %s", response.text)
         raise e
     for book in books:
+        logger.info(book)
         if book.get("MagnetUri"):
             book["Link"] = book["MagnetUri"]
-        else:
-            book["Link"] = get_magnet(book.get("Link"))
         if book.get("Poster"):
             book["Poster"] = make_jackett_url_public(book["Poster"])
+        book["Source"] = SOURCE
         yield book

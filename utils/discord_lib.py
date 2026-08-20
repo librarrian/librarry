@@ -1,6 +1,6 @@
 import requests
 import os
-from . import constants
+from . import environment
 from .audible_scrape import BookMetadata
 
 GREEN = 48640
@@ -15,7 +15,7 @@ def send_message(
     color: int | None = None,
     thumbnail: str | None = None,
 ):
-    if not constants.DISCORD_WEBHOOK:
+    if not environment.DISCORD_WEBHOOK:
         return
     if not embed:
         embed = {}
@@ -28,7 +28,7 @@ def send_message(
     if thumbnail:
         embed["thumbnail"] = {"url": thumbnail}
     requests.post(
-        constants.DISCORD_WEBHOOK,
+        environment.DISCORD_WEBHOOK,
         json={"embeds": [embed]},
         headers={"Content-Type": "application/json"},
         timeout=10,
@@ -174,9 +174,9 @@ def multiple_messages(
 def send_book_info(
     books: list[BookMetadata], torrent_name: str, torrent_complete: bool
 ):
-    if not constants.DISCORD_WEBHOOK:
+    if not environment.DISCORD_WEBHOOK:
         return
-    if len(books) > constants.MAX_EMBEDS:
+    if len(books) > environment.MAX_EMBEDS:
         embeds = single_message(books, torrent_name, torrent_complete)
     else:
         embeds = multiple_messages(books, torrent_name, torrent_complete)

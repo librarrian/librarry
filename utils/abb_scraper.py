@@ -1,17 +1,11 @@
+from collections.abc import Generator
 from bs4 import BeautifulSoup
 import requests
 from urllib.parse import quote
 import datetime
 import logging
-try:
-    from . import constants
-except ImportError:
-    pass
-try:
-    import constants
-except ImportError:
-    pass
-
+import re
+from . import environment
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +15,7 @@ HEADERS = {
 TRACKERS: set[str] = set()
 TRACKERS_UPDATE_TIME = datetime.datetime.fromtimestamp(0)
 FLARESOLVERR_SESSION = "audiobookbay"
+SOURCE = "scrape"
 
 
 class AudioBookBayError(Exception):
@@ -29,21 +24,30 @@ class AudioBookBayError(Exception):
 
 def create_flaresolverr_session():
     requests.post(
-        f"{constants.FLARESOLVERR_ADDRESS}/v1",
+        f"{environment.FLARESOLVERR_ADDRESS}/v1",
         json={"cmd": "sessions.create", "session": FLARESOLVERR_SESSION},
     )
 
 
 def destroy_flaresolverr_session():
     requests.post(
-        f"{constants.FLARESOLVERR_ADDRESS}/v1",
+        f"{environment.FLARESOLVERR_ADDRESS}/v1",
         json={"cmd": "sessions.destroy", "session": FLARESOLVERR_SESSION},
     )
 
 
-def flaresolverr_get(url: str) -> str:
+def get_html(url: str) -> str:
+    if not environment.FLARESOLVERR_ADDRESS:
+        response = requests.get(url, headers=HEADERS, timeout=60)
+        if not response.ok:
+            logger.error(f"Error fetching URL {url}: {response.status_code}")
+            raise AudioBookBayError(
+                f"HTTP error {response.status_code} for URL '{url}': {response.text}"
+            )
+        return response.text
+
     response = requests.post(
-        f"{constants.FLARESOLVERR_ADDRESS}/v1",
+        f"{environment.FLARESOLVERR_ADDRESS}/v1",
         json={
             "cmd": "request.get",
             "url": url,
@@ -90,7 +94,7 @@ def update_trackers():
 def get_book_details(
     book: dict[str, str],
 ) -> dict[str, str] | None:
-    html = flaresolverr_get(book["Details"])
+    html = get_html(book["Details"])
     soup = BeautifulSoup(html, "html.parser")
     hash_val = None
     for row in soup.find_all("tr"):
@@ -120,46 +124,99 @@ def get_book_details(
     return book
 
 
+def get_magnet_link(url: str, book_title: str) -> str:
+    update_trackers()
+    html = get_html(url)
+    soup = BeautifulSoup(html, "html.parser")
+    hash_val = None
+    for row in soup.find_all("tr"):
+        cells = row.find_all("td")
+        if len(cells) >= 2 and cells[0].get_text(strip=True).lower().startswith(
+            "info hash:"
+        ):
+            hash_val = cells[1].get_text(strip=True)
+    if not hash_val:
+        logger.error(f"Error fetching book details for {book_title}: No hash found")
+        raise AudioBookBayError(f"No hash found for book: {book_title}")
+    tr_params = "&".join(f"tr={quote(t, safe='')}" for t in TRACKERS)
+    logger.info(f"book_title: {type(book_title)}")
+
+    return f"magnet:?xt=urn:btih:{hash_val}&dn={quote(book_title, safe='')}&{tr_params}"
+
+
 def get_books(
     query: str, title_only: bool = True, base_url: str = "https://audiobookbay.lu"
-) -> dict[str, str]:  # list[dict[str, str]]:
-    query = quote(query, safe="")
+) -> Generator[dict[str, str]]:  # list[dict[str, str]]:
+    query = quote(query.lower(), safe="")
     url = f"{base_url}?s={query}{"&tt=1" if title_only else ""}"
     logger.info("Search URL: %s", url)
-    html = flaresolverr_get(url)
+    html = get_html(url)
     logger.info("Fetched search results for query: %s", query)
     soup = BeautifulSoup(html, "html.parser")
-    divs = soup.find_all("div", class_="post")
-    found_books = []
-    for div in divs:
-        postTitle = div.find("div", class_="postTitle")
-        if not postTitle:
+    book_divs = soup.find_all("div", class_="post")
+
+    for div in book_divs:
+        book: dict[str, str] = {}
+        post_title = div.find("div", class_="postTitle")
+        if not post_title:
             continue
-        all_a = postTitle.find_all("a")
-        if not all_a:
+        a = post_title.find("a")
+        if not a:
             continue
-        title = all_a[0].text
-        link = all_a[0].get("href")
+        title = a.text
+        link = a.get("href")
         if not link or not title:
             continue
+        book["Title"] = title
+        book["Details"] = f"{base_url}{link}"
 
-        # print(title)
+        post_content = div.find("div", class_="postContent")
+        book["Poster"] = ""
+        if post_content:
+            img = post_content.find("img")
+            if img:
+                book["Poster"] = str(img.get("src", ""))
+        match = re.search(r"Posted:\s+(\d\s+\w+\s+\d+)", str(post_content))
+        book["Date"] = match.group(1) if match else ""
+        match = re.search(r"Format:\s+<[^>]+>([^<]*)", str(post_content))
+        book["Format"] = match.group(1) if match else ""
+        match = re.search(r"Bitrate:\s+<[^>]+>([^<]*)", str(post_content))
+        book["Bitrate"] = match.group(1) if match else ""
+        match = re.search(
+            r"File Size:\s+<[^>]+>([^<]*)<[^>]*>([^<]*)", str(post_content)
+        )
+        if match:
+            book["fileSize"] = f"{match.group(1).strip()} {match.group(2).strip()}"
+        else:
+            book["fileSize"] = ""
+        post_info = div.find("div", class_="postInfo")
+        match = re.search(r"Language:\s([^<]+)", str(post_info))
+        book["Language"] = match.group(1) if match else ""
+
         logger.info("Found book: %s", title)
-        found_books.append({"Title": title, "Details": f"{base_url}{link}"})
-    if not found_books:
-        logger.info("No books found for query: %s", query)
-        return []
-    update_trackers()
-    # books=[]
-    for found_book in found_books:
-        try:
-            book = get_book_details(found_book)
-            if book:
-                yield book
-                # books.append(book)
-        except Exception as e:
-            logger.error(f"Error fetching details for book {found_book['Title']}: {e}")
-    # logger.info(f"Total books found: {len(found_books)}")
+        logger.debug("Book details: %s", book)
+        for key, value in book.items():
+            if value == "?":
+                book[key] = ""
+        book["Link"] = book["Details"]
+        book["Source"] = SOURCE
+        yield book
+
+    #     found_books.append(book)
+    # if not found_books:
+    #     logger.info("No books found for query: %s", query)
+    #     return []
+    # update_trackers()
+    # # books=[]
+    # for found_book in found_books:
+    #     try:
+    #         book = get_book_details(found_book)
+    #         if book:
+    #             yield book
+    #             # books.append(book)
+    #     except Exception as e:
+    #         logger.error(f"Error fetching details for book {found_book['Title']}: {e}")
+    # # logger.info(f"Total books found: {len(found_books)}")
     # return books
 
 

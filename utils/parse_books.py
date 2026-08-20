@@ -4,7 +4,7 @@ import backoff
 import logging
 import json
 import re
-from . import constants, gpt_lib
+from . import environment, gpt_lib
 from .audible_scrape import BookMetadata
 
 logger = logging.getLogger(__name__)
@@ -15,10 +15,12 @@ logger = logging.getLogger(__name__)
 def get_files(torrent_info: dict) -> list[str]:
     hash = torrent_info["hash"]
     response = requests.get(
-        f"{constants.QBITTORRENT_ADDRESS}/api/v2/torrents/files?hash={hash}"
+        f"{environment.QBITTORRENT_ADDRESS}/api/v2/torrents/files?hash={hash}"
     )
     if response.status_code != 200:
-        raise RuntimeError(f"Failed to get torrent info for hash {hash}")
+        raise RuntimeError(
+            f"Failed to get torrent files for {torrent_info['name']}: {hash}"
+        )
     files = []
     for file in response.json():
         _, extension = os.path.splitext(file["name"])
@@ -32,6 +34,9 @@ def get_book_data(
 ) -> list[BookMetadata]:
 
     files = get_files(torrent_info)
+    if not files:
+        logger.warning("No files found for %s", torrent_info["name"])
+        return []
     torrent_name = torrent_info["name"]
     logger.debug(f"Files found for {torrent_name}: {files}")
 

@@ -87,7 +87,7 @@ def maybe_get_books_data(asins: list[str]) -> list[BookMetadata]:
     return out
 
 
-def lookup_book(query: str, limit: int = 20) -> list[BookMetadata]:
+def lookup_book(query: str, limit: int = 50) -> list[BookMetadata]:
     """Retrieve book data from Audible and Audnexus based on a search query.
 
     First queries Audible API given query, then looks up each ASIN in the

@@ -2,8 +2,7 @@ import os
 import sys
 import logging
 from logging import handlers
-from . import constants
-
+from . import environment
 
 def run():
 
@@ -23,13 +22,13 @@ def run():
     )
 
     # stdout handler
-    logging.getLogger().handlers[0].setLevel(constants.LOG_LEVEL)
+    logging.getLogger().handlers[0].setLevel(environment.LOG_LEVEL)
 
     # File handler per level
-    os.makedirs(constants.LOG_DIR, exist_ok=True)
+    os.makedirs(environment.LOG_DIR, exist_ok=True)
     for log_level in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
         handler = handlers.RotatingFileHandler(
-            filename=os.path.join(constants.LOG_DIR, f"{log_level.lower()}.log"),
+            filename=os.path.join(environment.LOG_DIR, f"{log_level.lower()}.log"),
             maxBytes=10 * 1024 * 1024,  # 10 MB
             backupCount=3,
         )

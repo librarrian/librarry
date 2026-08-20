@@ -1,12 +1,13 @@
 from openai import OpenAI, OpenAIError
 from openai.types.responses import ParsedResponseFunctionToolCall
+# from openai.types.responses.function_tool_param import FunctionToolParam
 import sys
 import json
 import os
 from typing import List, Literal
 import backoff
 import logging
-from . import schema, directory_tree, constants, audible_scrape
+from . import environment, schema, directory_tree, audible_scrape
 import warnings
 
 warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
@@ -74,7 +75,7 @@ def group_book_files(collection_name: str, root: directory_tree.Root) -> schema.
     ]
     try:
         response = client.responses.parse(
-            model=constants.GPT_MODEL, input=inputs, text_format=schema.Books
+            model=environment.GPT_MODEL, input=str(inputs), text_format=schema.Books
         )
         logger.debug(
             f"Group files response: {json.dumps(response.to_dict(), indent=2)}"
@@ -82,11 +83,11 @@ def group_book_files(collection_name: str, root: directory_tree.Root) -> schema.
     except OpenAIError as e:
         raise RuntimeError(f"OpenAI error: {e}")
     books = response.output_parsed
+    if not books:
+        raise RuntimeError("Unable to group book files")
     logger.info(
         f"Books found: \n{"\n".join([f"'{book.title}' - {book.authors[0]}'" for book in books.books])}"
     )
-    if not books:
-        raise RuntimeError("Unable to group book files")
     return books
 
 
@@ -143,7 +144,7 @@ def find_asins(input_books: dict):
     Notes:
         - The function uses the Audible search tool via OpenAI's function calling feature.
         - It will loop until either all books are matched, no more function calls are returned,
-          or the maximum number of lookups (constants.NUM_LOOKUPS) is exceeded.
+          or the maximum number of lookups (environment.NUM_LOOKUPS) is exceeded.
         - Matched books are removed from input_books as they are found.
         - Previous queries for each book are tracked to avoid duplicate searches.
     """
@@ -214,8 +215,8 @@ def find_asins(input_books: dict):
         )
         try:
             response = client.responses.parse(
-                model=constants.GPT_MODEL,
-                input=inputs,
+                model=environment.GPT_MODEL,
+                input=str(inputs),
                 tools=tools,
                 text_format=schema.MatchedBooks,
             )
@@ -231,7 +232,16 @@ def find_asins(input_books: dict):
         if matched_books:
             all_matches += matched_books.books
             for book in matched_books.books:
+                logger.info(
+                    "Found book match: %s - %s",
+                    book.asin,
+                    input_books[book.id]["title"],
+                )
                 del input_books[book.id]
+            logger.info(
+                "Books left to match: %s",
+                ", ".join([book["title"] for book in input_books.values()]),
+            )
 
         function_calls = []
         for output in response.output:
@@ -239,7 +249,7 @@ def find_asins(input_books: dict):
                 function_calls.append(output)
         if not function_calls:
             break
-        if i > constants.NUM_LOOKUPS:
+        if i > environment.NUM_LOOKUPS:
             break
     return all_matches
 

@@ -14,6 +14,22 @@ class QBittorrentInterface:
     def __init__(self, address: str):
         self.address = address
 
+    def get_torrents(self) -> list[dict[str, str | int]]:
+        response = requests.get(
+            f"{self.address}/api/v2/torrents/info?category=librarry"
+        )
+        if response.status_code != 200:
+            raise QbittorrentError(
+                f"Failed to get torrents: {response.status_code} - {response.text}"
+            )
+        try:
+            torrents = response.json()
+        except requests.JSONDecodeError as e:
+            raise QbittorrentError(
+                f"Failed to get torrents: failed to parse JSON response: {e}"
+            )
+        return torrents
+
     def get_torrent_info(self, hash: str) -> dict[str, str | int]:
         response = requests.get(f"{self.address}/api/v2/torrents/info?hashes={hash}")
         if response.status_code != 200:
@@ -39,11 +55,10 @@ class QBittorrentInterface:
         return torrent_info[0]
 
     def add_torrent(self, link: str):
-        magnet_link = jackett.get_magnet(link)
-        payload = {"urls": magnet_link, "category": "audiobook"}
+        payload = {"urls": link, "category": "librarry"}
         response = requests.post(f"{self.address}/api/v2/torrents/add", data=payload)
         logging.info(f"Add torrent response: {response.status_code} - {response.text}")
         if response.status_code != 200:
             raise QbittorrentError(
-                f"Failed to add torrent {magnet_link}: {response.status_code} - {response.text}"
+                f"Failed to add torrent {link}: {response.status_code} - {response.text}"
             )

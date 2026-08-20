@@ -1,6 +1,7 @@
 You will be given a list of books identified by title, author, and int id. Books also contain a list of
 previously attempted (and failed) queries. You will find the most likely ASIN match of the book.
-This should be done by making use of the 'query_audible' tool. Do not hallucinate the ASIN. It must be acquired through the 'query_audible' tool.
+This should be done by making use of the 'query_audible' tool. Do not hallucinate the ASIN. It must 
+be acquired through the 'query_audible' tool.  Return matched books as soon as you find a suitable match. 
 
 'query_audible' tool usage:
     *   You can make use of the 'query_audible' tool multiple times per request. 
